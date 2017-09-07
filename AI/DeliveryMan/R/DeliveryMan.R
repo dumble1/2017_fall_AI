@@ -3,6 +3,7 @@ dumbDM=function(roads,car,packages){
   car$nextMove=sample(c(2,4,6,8),1)
   return (car)
 }
+
 basicDM=function(roads,car,packages) {
   nextMove=0
   toGo=0
@@ -22,6 +23,7 @@ basicDM=function(roads,car,packages) {
   car$mem=list()
   return (car)
 }
+
 manualDM=function(roads,car,packages) {
   if (car$load>0) {
     print(paste("Current load:",car$load))
@@ -33,15 +35,18 @@ manualDM=function(roads,car,packages) {
 }
 
 A_starDM = function(roads,car,packages){
-	if(car$mem ==NULL && sum(packages[,5])==0){								# first start(no pickup order and no finished delivery).
+	if(length(car$mem)==0  && sum(packages[,5])==0){							# first start(no pickup order and no finished delivery).
 		car$mem = orderPickup(0,0,0,packages,list())					# store pickup order in mem.  
 		car$mem[[1]] = NULL
-		#print(car$mem)
+		print(car$mem)
 	}
 
 	visited  = matrix(,nrow=2)										# list of pairs. 2*n  matrix.
 	frontier = matrix(,nrow=2)										# list of pairs. 2*n  matrix.
 	toGo = car$mem[[1]]												# next delivery number.
+	
+	dest_x = NA
+	dest_y = NA
 	
 	if(packages[toGo,5] == 2){										# delivered.
 		car$mem[[1]] = NULL											# delete old target.
@@ -49,9 +54,7 @@ A_starDM = function(roads,car,packages){
 		if(toGo == NULL){											# game is finished. this instrucion may be not executed.
 			return (car)
 		}
-	}
-	dest_x = NA
-	dest_y = NA	
+	}	
 	else if(packages[toGo,5] == 0){									# target package is not picked.
 		dest_x = packages[toGo,1]									# set destination as package.
 		dest_y = packages[toGo,2]	
@@ -60,9 +63,9 @@ A_starDM = function(roads,car,packages){
 		dest_x = packages[toGo,3]									# set destination as where you should deliver it to.
 		dest_y = packages[toGo,4]
 	}
-	else 
+	else{
 		print("what's wrong?? ERROR")								# Error case package state is strange.	 
-	
+	}
 	bestPath = A_star_algorithm(dest_x,dest_y)						# best path to destination. 2*n matrix.
 	
 	if(bestPath[1,1]-car$x == 1){									# go right.
@@ -230,8 +233,8 @@ processNextMove<-function(car,roads,dim) {
 plotPackages=function(packages) {
   notpickedup=which(packages[,5]==0) 
   notdelivered=which(packages[,5]!=2)
-  points(packages[notpickedup,1],packages[notpickedup,2],col="green",pch=18,cex=3)
-  points(packages[notdelivered,3],packages[notdelivered,4],col="red",pch=18,cex=3)
+  points(packages[notpickedup,1],packages[notpickedup,2],col="green",pch=as.character(notpickedup),cex=3)
+  points(packages[notdelivered,3],packages[notdelivered,4],col="red",pch=as.character(notdelivered),cex=3)
 }
 
 makeRoadGrid<-function() {
