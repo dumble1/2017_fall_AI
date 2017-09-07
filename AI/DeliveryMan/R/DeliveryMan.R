@@ -32,6 +32,71 @@ manualDM=function(roads,car,packages) {
   return (car)
 }
 
+A_starDM = function(roads,car,packages){
+	if(car$mem ==NULL && sum(packages[,5])==0){								# first start(no pickup order and no finished delivery).
+		car$mem = orderPickup(0,0,0,packages,list())					# store pickup order in mem.  
+		car$mem[[1]] = NULL
+		#print(car$mem)
+	}
+
+	visited  = matrix(,nrow=2)										# list of pairs.
+	frontier = matrix(,nrow=2)										# list of pairs.
+	toGo = car$mem[[1]]												# next delivery number.
+	
+	if(packages[toGo,5] == 2){										# delivered.
+		car$mem[[1]] = NULL											# delete old target.
+		toGo = car$mem[[1]]
+		if(toGo == NULL){											# game is finished. this instrucion may be not executed.
+			return (car)
+		}
+	}
+	dest_x = NA
+	dest_y = NA	
+	else if(packages[toGo,5] == 0){									# target package is not picked.
+		dest_x = packages[toGo,1]									# set destination as package.
+		dest_y = packages[toGo,2]	
+	}
+	else if(packages[toGo,5] == 1){									# not delivered yet.
+		dest_x = packages[toGo,3]									# set destination as where you should deliver it to.
+		dest_y = packages[toGo,4]
+	}
+	
+	
+	
+	else 
+		print("what's wrong?? ERROR")								# Error case package state is strange.							 
+}
+
+orderPickup = function(originx,originy,cost,packages,track){ 
+	min = 2000
+	mintrack= list()							
+	for(i in 1:5){
+		if (i %in% track)                                                    #already visited.
+			next
+		else{
+			cost_tmp = cost + abs(packages[i,1]-originx) + 
+							  abs(packages[i,2]-originy)	# origin to next package.
+		 	 tmp = orderPickup(packages[i,3],packages[i,4], cost_tmp,packages, c(track,list(i)))
+					#get the cost and track to the end.
+			if(tmp[[1]]<min){		# find the minimum cost track.
+				min = tmp[[1]]
+				tmp[[1]]=NULL
+				mintrack= tmp
+			}
+		}
+	}
+	if(length(mintrack)==0){			#if there is no where to go, then just return previous cost and 
+	#print(cost)
+	#print(track)
+		answer = c(list(cost),track)
+	}
+	else{
+	#	cat("this is ",cost, "    ",min)
+ #print(mintrack)
+		answer =c(list(min),mintrack)
+	}
+	return (answer)
+}
 #' Run Delivery Man
 #' 
 #' Runs the delivery man game. In this game, deliveries are randomly placed on a city grid. You
