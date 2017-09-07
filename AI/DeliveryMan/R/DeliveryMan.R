@@ -39,8 +39,8 @@ A_starDM = function(roads,car,packages){
 		#print(car$mem)
 	}
 
-	visited  = matrix(,nrow=2)										# list of pairs.
-	frontier = matrix(,nrow=2)										# list of pairs.
+	visited  = matrix(,nrow=2)										# list of pairs. 2*n  matrix.
+	frontier = matrix(,nrow=2)										# list of pairs. 2*n  matrix.
 	toGo = car$mem[[1]]												# next delivery number.
 	
 	if(packages[toGo,5] == 2){										# delivered.
@@ -60,11 +60,26 @@ A_starDM = function(roads,car,packages){
 		dest_x = packages[toGo,3]									# set destination as where you should deliver it to.
 		dest_y = packages[toGo,4]
 	}
-	
-	
-	
 	else 
-		print("what's wrong?? ERROR")								# Error case package state is strange.							 
+		print("what's wrong?? ERROR")								# Error case package state is strange.	 
+	
+	bestPath = A_star_algorithm(dest_x,dest_y)						# best path to destination. 2*n matrix.
+	
+	if(bestPath[1,1]-car$x == 1){									# go right.
+		car$nextmove = 6
+	}
+	else if(bestPath[1,1] - car$x == -1){								# go left.
+		car$nextMove = 4								
+	}
+	else if(bestPath[1,2] - car$y == 1){								# go up.
+		car$nextMove = 8
+	}
+	else if(bestPath[1,2] -car$y == -1){								# go down.
+		car$nextMove = 2
+	}
+	else if(bestPath[1,1]== car$x &&  bestPath[1,2] == car$y)			# stay 
+		car$nextMove = 0
+ 	return (car)
 }
 
 orderPickup = function(originx,originy,cost,packages,track){ 
