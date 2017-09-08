@@ -15,7 +15,7 @@ myDM = function(roads,car,packages) {
   print(costarr)
   print(astar(costarr,c(1,1),c(10,10)))
   
-  
+  #important comment
   
 
   # print(typeof(roads))
