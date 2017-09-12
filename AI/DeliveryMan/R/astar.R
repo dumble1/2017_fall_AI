@@ -1,7 +1,40 @@
 #In all our functions we treat x as the row dimension, y as the coloumn dimension
 
 myDM = function(roads,car,packages) {
-  #transpose hroads and vroads to make dimensions fit
+#add
+	if(length(car$mem)==0  && sum(packages[,5])==0){							# first start(no pickup order and no finished delivery).
+		car$mem = orderPickup(0,0,0,packages,list())					# store pickup order in mem.  
+		car$mem[[1]] = NULL
+		print(car$mem)
+	}
+
+	toGo =	car$mem[[1]]
+ 
+	dest_x = NA
+	dest_y = NA
+	
+	if(packages[toGo,5] == 2){										# delivered.
+		car$mem[[1]] = NULL											# delete old target.
+		print(car$mem)
+		toGo = car$mem[[1]]
+		if(length(car$mem)==0){											# game is finished. this instrucion may be not executed.
+			return (car)
+		}
+	}	
+	if(packages[toGo,5] == 0){									# target package is not picked.
+		dest_x = packages[toGo,1]									# set destination as package.
+		dest_y = packages[toGo,2]	
+	}
+	else if(packages[toGo,5] == 1){									# not delivered yet.
+		dest_x = packages[toGo,3]									# set destination as where you should deliver it to.
+		dest_y = packages[toGo,4]
+	}
+	else{
+		print("what's wrong?? ERROR")								# Error case package state is strange.	 
+}
+#add
+  
+#transpose hroads and vroads to make dimensions fit
   hroads <- t(roads$hroads) 
   vroads <- t(roads$vroads)
   xdim <- nrow(hroads) + 1
@@ -12,10 +45,75 @@ myDM = function(roads,car,packages) {
   costarr[,2:10,2] = vroads #cost below
   costarr[1:9,,3] = hroads #cost to the right
   costarr[,1:9,4] = vroads #cost above
-  print(astar(costarr,c(1,1),c(10,10)))
-
+  bestPath = astar(costarr,c(car$x,car$y),c(dest_x,dest_y))  ##find bestpath from current node to next package or destination.
+ 
+  print (bestPath)
+# add order function.
+	n=1
+	while(TRUE){
+		if(bestPath[n,1]==0&&bestPath[n,2]==0){
+			break;
+		}
+		n = n+1
+	}
+	if (n==2){													# if next pack and last dest are on the same coordination then we need to stay once to pick up the package. 
+		car$nextMove = 5										# In this case, best Path's length is only 1. so n-2 can make error.
+	}
+	else if(bestPath[n-2,1] - car$x == 1){									# go right.
+		car$nextMove = 6
+	}
+	else if(bestPath[n-2,1] - car$x == -1){								# go left.
+		car$nextMove = 4								
+	}
+	else if(bestPath[n-2,2] - car$y == 1){								# go up.
+		car$nextMove = 8
+	}
+	else if(bestPath[n-2,2] - car$y == -1){								# go down.
+		car$nextMove = 2
+	}
+	else if(bestPath[n-2,1] == car$x &&  bestPath[n-2,2] == car$y){			# stay 
+		car$nextMove = 5
+	}
+	else{
+		print ("no way?!")
+	}		
+#	
   return(car)
 }
+
+
+
+orderPickup = function(originx,originy,cost,packages,track){ 
+	min = 2000
+	mintrack= list()							
+	for(i in 1:5){
+		if (i %in% track)                                                    #already visited.
+			next
+		else{
+			cost_tmp = cost + abs(packages[i,1]-originx) + 
+							  abs(packages[i,2]-originy)	# origin to next package.
+		 	 tmp = orderPickup(packages[i,3],packages[i,4], cost_tmp,packages, c(track,list(i)))
+					#get the cost and track to the end.
+			if(tmp[[1]]<min){		# find the minimum cost track.
+				min = tmp[[1]]
+				tmp[[1]]=NULL
+				mintrack= tmp
+			}
+		}
+	}
+	if(length(mintrack)==0){			#if there is no where to go, then just return previous cost and 
+	#print(cost)
+	#print(track)
+		answer = c(list(cost),track)
+	}
+	else{
+	#	cat("this is ",cost, "    ",min)
+ #print(mintrack)
+		answer =c(list(min),mintrack)
+	}
+	return (answer)
+}
+
 
 hopcost = function(xdim,ydim,goal) {
   #returns matrix keeping the number of hops from every point (x,y) to the goal
@@ -45,7 +143,7 @@ astar = function(costarr,source,goal) {
   visitedm <- matrix(FALSE, nrow = xdim, ncol = ydim)
   visitedm[source[1],source[2]] <- TRUE
   #visited.previousarr: Stores the best predecessor of all the visited nodes.
-  # Used later to reconstruct the optimal path
+# Used later to reconstruct the optimal path
   visited.previousarr <- array(0,dim=c(xdim,ydim,2))
   #visited.costm: Stores the cost of the optimal path to all expanded nodes
   visited.costm <- matrix(Inf,xdim,ydim)

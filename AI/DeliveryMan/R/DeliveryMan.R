@@ -34,87 +34,6 @@ manualDM=function(roads,car,packages) {
   return (car)
 }
 
-A_starDM = function(roads,car,packages){
-	if(length(car$mem)==0  && sum(packages[,5])==0){							# first start(no pickup order and no finished delivery).
-		car$mem = orderPickup(0,0,0,packages,list())					# store pickup order in mem.  
-		car$mem[[1]] = NULL
-		print(car$mem)
-	}
-
-	visited  = matrix(,nrow=2)										# list of pairs. 2*n  matrix.
-	frontier = matrix(,nrow=2)										# list of pairs. 2*n  matrix.
-	toGo = car$mem[[1]]												# next delivery number.
-	
-	dest_x = NA
-	dest_y = NA
-	
-	if(packages[toGo,5] == 2){										# delivered.
-		car$mem[[1]] = NULL											# delete old target.
-		toGo = car$mem[[1]]
-		if(toGo == NULL){											# game is finished. this instrucion may be not executed.
-			return (car)
-		}
-	}	
-	else if(packages[toGo,5] == 0){									# target package is not picked.
-		dest_x = packages[toGo,1]									# set destination as package.
-		dest_y = packages[toGo,2]	
-	}
-	else if(packages[toGo,5] == 1){									# not delivered yet.
-		dest_x = packages[toGo,3]									# set destination as where you should deliver it to.
-		dest_y = packages[toGo,4]
-	}
-	else{
-		print("what's wrong?? ERROR")								# Error case package state is strange.	 
-	}
-	bestPath = A_star_algorithm(dest_x,dest_y)						# best path to destination. 2*n matrix.
-	
-	if(bestPath[1,1]-car$x == 1){									# go right.
-		car$nextmove = 6
-	}
-	else if(bestPath[1,1] - car$x == -1){								# go left.
-		car$nextMove = 4								
-	}
-	else if(bestPath[1,2] - car$y == 1){								# go up.
-		car$nextMove = 8
-	}
-	else if(bestPath[1,2] -car$y == -1){								# go down.
-		car$nextMove = 2
-	}
-	else if(bestPath[1,1]== car$x &&  bestPath[1,2] == car$y)			# stay 
-		car$nextMove = 0
- 	return (car)
-}
-
-orderPickup = function(originx,originy,cost,packages,track){ 
-	min = 2000
-	mintrack= list()							
-	for(i in 1:5){
-		if (i %in% track)                                                    #already visited.
-			next
-		else{
-			cost_tmp = cost + abs(packages[i,1]-originx) + 
-							  abs(packages[i,2]-originy)	# origin to next package.
-		 	 tmp = orderPickup(packages[i,3],packages[i,4], cost_tmp,packages, c(track,list(i)))
-					#get the cost and track to the end.
-			if(tmp[[1]]<min){		# find the minimum cost track.
-				min = tmp[[1]]
-				tmp[[1]]=NULL
-				mintrack= tmp
-			}
-		}
-	}
-	if(length(mintrack)==0){			#if there is no where to go, then just return previous cost and 
-	#print(cost)
-	#print(track)
-		answer = c(list(cost),track)
-	}
-	else{
-	#	cat("this is ",cost, "    ",min)
- #print(mintrack)
-		answer =c(list(min),mintrack)
-	}
-	return (answer)
-}
 #' Run Delivery Man
 #' 
 #' Runs the delivery man game. In this game, deliveries are randomly placed on a city grid. You
@@ -195,6 +114,9 @@ packageOn<-function(x,y,packages){
 }
 processNextMove<-function(car,roads,dim) {
   nextMove=car$nextMove
+	##########
+		print (nextMove)
+	#########
   if (nextMove==8) {
     if (car$y!=dim) {
       car$wait=roads$vroads[car$y,car$x]
@@ -233,7 +155,7 @@ processNextMove<-function(car,roads,dim) {
 plotPackages=function(packages) {
   notpickedup=which(packages[,5]==0) 
   notdelivered=which(packages[,5]!=2)
-  points(packages[notpickedup,1],packages[notpickedup,2],col="green",pch=as.character(notpickedup),cex=3)
+  points(packages[notpickedup,1],packages[notpickedup,2],col="green",pch=as.character(notpickedup),cex=3)			#####add visual effect.
   points(packages[notdelivered,3],packages[notdelivered,4],col="red",pch=as.character(notdelivered),cex=3)
 }
 
