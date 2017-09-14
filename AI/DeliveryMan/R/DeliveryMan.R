@@ -114,9 +114,6 @@ packageOn<-function(x,y,packages){
 }
 processNextMove<-function(car,roads,dim) {
   nextMove=car$nextMove
-	##########
-		print (nextMove)
-	#########
   if (nextMove==8) {
     if (car$y!=dim) {
       car$wait=roads$vroads[car$y,car$x]
@@ -155,8 +152,8 @@ processNextMove<-function(car,roads,dim) {
 plotPackages=function(packages) {
   notpickedup=which(packages[,5]==0) 
   notdelivered=which(packages[,5]!=2)
-  points(packages[notpickedup,1],packages[notpickedup,2],col="green",pch=as.character(notpickedup),cex=3)			#####add visual effect.
-  points(packages[notdelivered,3],packages[notdelivered,4],col="red",pch=as.character(notdelivered),cex=3)
+  points(packages[notpickedup,1],packages[notpickedup,2],col="green",pch=18,cex=3)		
+  points(packages[notdelivered,3],packages[notdelivered,4],col="red",pch=18,cex=3)
 }
 
 makeRoadGrid<-function() {

@@ -5,21 +5,21 @@ myDM = function(roads,car,packages) {
 	if(length(car$mem)==0 ){							# first start(no pickup order and no finished delivery).
 		car$mem = orderPickup(0,0,0,packages,list())					# store pickup order in mem.  
 		car$mem[[1]] = NULL
-		print(car$mem)
+		#print(car$mem)
 	}
 	if(car$load !=0){
 	 	toGo = car$load
 	}else{
 		toGo =	car$mem[[1]]
 	}
-	print ("turn")
+	#print ("turn")
  	#print (car$mem)
 	dest_x = NA
 	dest_y = NA
 	
 	if(packages[toGo,5] == 2){										# delivered.
 		car$mem[[1]] = NULL												# delete old target.
-		print(car$mem)
+		#print(car$mem)
 		toGo = car$mem[[1]]
 		if(length(car$mem)==0){											# game is finished. this instrucion may be not executed.
 			return (car)
@@ -28,13 +28,13 @@ myDM = function(roads,car,packages) {
 	if(car$mem[[1]] != car$load && car$load!=0){										# if pick other package 
 		for(i in 1:length(car$mem)){
 			if (car$load == car$mem[[i]]){				# move picked one to front of the car$mem
-				print("wrong pick")
-				print (car$mem)
+				#print("wrong pick")
+				#print (car$mem)
 				tmp = car$mem[[i]]
 				car$mem[[i]] = NULL
-				print(car$mem)
+				#print(car$mem)
 				car$mem = c(list(tmp), car$mem)
-				print(car$mem)
+				#print(car$mem)
 				break;
 			}		
 		}
@@ -65,13 +65,13 @@ myDM = function(roads,car,packages) {
   costarr[,1:9,4] = vroads #cost above
   bestPath = astar(costarr,c(car$x,car$y),c(dest_x,dest_y))  ##find bestpath from current node to next package or destination.
  
-  print (bestPath)
+  #print (bestPath)
 
 # add order function.
 
 	n=length(bestPath)/2
 		
-	print (n)
+	#print (n)
 	if (n==1){													# if next pack and last dest are on the same coordination then we need to stay once to pick up the package. 
 		car$nextMove = 5										# In this case, best Path's length is only 1. so n-2 can make error.
 	}
