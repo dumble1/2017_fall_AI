@@ -13,7 +13,7 @@ myDM = function(roads,car,packages) {
 		toGo =	car$mem[[1]]
 	}
 	print ("turn")
- 	print (car$mem)
+ 	#print (car$mem)
 	dest_x = NA
 	dest_y = NA
 	
@@ -65,31 +65,29 @@ myDM = function(roads,car,packages) {
   costarr[,1:9,4] = vroads #cost above
   bestPath = astar(costarr,c(car$x,car$y),c(dest_x,dest_y))  ##find bestpath from current node to next package or destination.
  
-#  print (bestPath)
+  print (bestPath)
+
 # add order function.
-	n=1
-	while(TRUE){
-		if(bestPath[n,1]==0&&bestPath[n,2]==0){
-			break;
-		}
-		n = n+1
-	}
-	if (n==2){													# if next pack and last dest are on the same coordination then we need to stay once to pick up the package. 
+
+	n=length(bestPath)/2
+		
+	print (n)
+	if (n==1){													# if next pack and last dest are on the same coordination then we need to stay once to pick up the package. 
 		car$nextMove = 5										# In this case, best Path's length is only 1. so n-2 can make error.
 	}
-	else if(bestPath[n-2,1] - car$x == 1){									# go right.
+	else if(bestPath[2,1] - car$x == 1){									# go right.
 		car$nextMove = 6
 	}
-	else if(bestPath[n-2,1] - car$x == -1){								# go left.
+	else if(bestPath[2,1] - car$x == -1){								# go left.
 		car$nextMove = 4								
 	}
-	else if(bestPath[n-2,2] - car$y == 1){								# go up.
+	else if(bestPath[2,2] - car$y == 1){								# go up.
 		car$nextMove = 8
 	}
-	else if(bestPath[n-2,2] - car$y == -1){								# go down.
+	else if(bestPath[2,2] - car$y == -1){								# go down.
 		car$nextMove = 2
 	}
-	else if(bestPath[n-2,1] == car$x &&  bestPath[n-2,2] == car$y){			# stay 
+	else if(bestPath[2,1] == car$x &&  bestPath[2,2] == car$y){			# stay 
 		car$nextMove = 5
 	}
 	else{
@@ -248,13 +246,13 @@ astar = function(costarr,source,goal) {
     pathm[i,] <- where.onpath
     i <- i+1
   }
-  # #Activate if you want to cut off zeros and reverse the path
-  # pathx <- pathm[,1]
-  # pathy <- pathm[,2]
-  # pathx <- pathx[which(pathx != 0)]
-  # pathy <- pathy[which(pathy != 0)]
-  # pathm <- cbind(pathx,pathy)
-  # pathm <- apply(pathm, 2, rev)
+   #Activate if you want to cut off zeros and reverse the path
+   pathx <- pathm[,1]
+   pathy <- pathm[,2]
+   pathx <- pathx[which(pathx != 0)]
+   pathy <- pathy[which(pathy != 0)]
+   pathm <- cbind(pathx,pathy)
+   pathm <- apply(pathm, 2, rev)
   
   return(pathm)
 }
