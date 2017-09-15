@@ -100,7 +100,7 @@ myDM = function(roads,car,packages) {
 
 
 orderPickup = function(originx,originy,cost,packages,track){ 
-	min = 2000
+	min = Inf
 	mintrack= list()							
 	for(i in 1:nrow(packages)){
 		if (i %in% track)                                                    #already visited.
