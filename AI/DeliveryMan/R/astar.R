@@ -1,6 +1,6 @@
 #In all our functions we treat x as the row dimension, y as the coloumn dimension
 
-myDM = function(roads,car,packages) {
+astarDM = function(roads,car,packages) {
 #add
 	if(length(car$mem)==0 ){							# first start(no pickup order and no finished delivery).
 		car$mem = orderPickup(0,0,0,packages,list())					# store pickup order in mem.  
