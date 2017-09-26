@@ -8,27 +8,15 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   print(edges)
   print("probs")
   print(probs)
-  options=getOptions(positions[3],edges)
-  print("Move 1 options (plus 0 for search):")
-  print(options)
-  mv1=readline("Move 1: ")
-  if (mv1=="q") {stop()}
-  if (!mv1 %in% options && mv1 != 0) {
-    warning ("Invalid move. Search ('0') specified.")
-    mv1=0
-  }
-  if (mv1!=0) {
-    options=getOptions(mv1,edges)
-  }
-  print("Move 2 options (plus 0 for search):")
-  print(options)
-  mv2=readline("Move 2: ")    
-  if (mv2=="q") {stop()}
-  if (!mv1 %in% options && mv1 != 0) {
-    warning ("Invalid move. Search ('0') specified.")
-    mv2=0
-  }
-  moveInfo$moves=c(mv1,mv2)
+
+  # Generate emission matrices
+  min = 100
+  max = 200
+  delta = 5
+  e.mtrx.sal = generate.emission.matrix(probs$salinity,min,max,delta)
+  e.mtrx.pho = generate.emission.matrix(probs$phosphate,min,max,delta)
+  e.mtrx.nit = generate.emission.matrix(probs$nitrogen,min,max,delta)
+  
   return(moveInfo)
 }
 
@@ -90,6 +78,17 @@ generate.emission.matrix <- function(data,min,max,delta) {
   return (emission.matrix)
 }
 
+#' Returns the interval index of i (see generate.emission.matrix)
+n.interval <- function(i,min,max,delta) {
+  n.intervals = (max - min)/delta + 2
+  if (i < min)
+    return (1)
+  else if (i > max)
+    return (n.intervals)
+  else
+    return 1 + floor((i-min)/delta)
+}
+
 test.emission.matrix <- function() {
   data = cbind(runif(40,100,200),runif(40,5,30))
   #print(generate.emission.matrix(data,100,200,5))
@@ -97,7 +96,7 @@ test.emission.matrix <- function() {
   data = cbind(runif(10,5,25),runif(10,1,2))
   print("data")
   print(data)
-  e.m = generate.emission.matrix(data,5,25,5)
+  e.m = generate.emission.matrix(data,-25,25,5)
   print(e.m)
   print("This should be filled with 1")
   for (i in 1:nrow(e.m)) {
