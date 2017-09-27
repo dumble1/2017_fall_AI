@@ -1,5 +1,7 @@
-# Parameters
+#' Number of states
 NSTATES=40
+
+#' Interval sizes in emission matrices
 MIN=50
 MAX=250
 DELTA=1
