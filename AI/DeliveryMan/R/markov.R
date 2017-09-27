@@ -344,7 +344,7 @@ n.interval <- function(i,min,max,delta) {
   else if (i > max)
     return (n.intervals)
   else
-    return (1 + floor((i-min)/delta))
+    return (1 + ceiling((i-min)/delta))
 }
 
 # A small test function
@@ -361,5 +361,4 @@ test.emission.matrix <- function() {
   for (i in 1:nrow(e.m)) {
     print(sum(e.m[i,]))
   }
-
 }
