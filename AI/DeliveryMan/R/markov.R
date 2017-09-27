@@ -1,7 +1,8 @@
+# Parameters
 NSTATES=40
-MIN=100
-MAX=200
-DELTA=5
+MIN=50
+MAX=250
+DELTA=1
 
 markovWC=function(moveInfo,readings,positions,edges,probs) {
 
@@ -16,25 +17,25 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
     t.mtrx = generate.transition.matrix(edges,NSTATES)
 
     #' Initialize the memory list
-    moveInfo$mem = list(s.old = rep(1/NSTATES,NSTATES),   # Old state estimation
+    moveInfo$mem = list(s.old = rep(1/NSTATES,NSTATES),   # Initial state estimation (all states equally probable)
                         t.mtrx = t.mtrx,                  # Transition matrix
-                        e.mtrxs = list(salinity=e.mtrx.sal,phosphate=e.mtrx.pho,nitrogen=e.mtrx.nit), # Emission matrices
-                        searched = 0)
+                        e.mtrxs = list(salinity=e.mtrx.sal,phosphate=e.mtrx.pho,nitrogen=e.mtrx.nit) # Emission matrices
+                        )
   }
 
   # Extract data
   s.old = moveInfo$mem$s.old
   t.mtrx = moveInfo$mem$t.mtrx
   e.mtrxs = moveInfo$mem$e.mtrxs
-  searched = moveInfo$mem$searched
 
-  # Had problems with these numbers not beeing numeric
+  # Had problems with positions not beeing numeric
   for (i in 1:length(positions)) {
     if (!is.na(positions[i])) {
       positions[i] = as.numeric(positions[i])
     }
   }
-    
+
+  # Generate the state estimation
   if (!is.na(positions[1]) && positions[1] < 0) {
     #' Hiker 1 is eaten
     print(paste("hiker 1 is eaten!"))
@@ -46,47 +47,52 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
     s.est = rep(0,NSTATES)
     s.est[-positions[2]] = 1
   } else {
-    # Estimate state
+    # Estimate state with forward algorithm
     s.est = state.estimate(s.old, t.mtrx,e.mtrxs,readings)
 
+    # If hikers are not eaten, Croc is not at their positions
     if (!is.na(positions[1])) {
-      s.est[as.numeric(positions[1])] = 0
+      s.est[positions[1]] = 0
     } 
-    
     if (!is.na(positions[2])) {
-      s.est[as.numeric(positions[2])] = 0
+      s.est[positions[2]] = 0
     }
 
+    # Normalize to real probabilities
     s.est = normalize(s.est)
   }
 
-  cur = as.numeric(positions[3])
+  # Current position
+  cur = positions[3]
+  # Most probably location for Croc
   goal = which(s.est == max(s.est),arr.ind = TRUE)
   
   print(paste("most probable state:",goal))
 
-  adj.mtrx = generate.adjacency.mtrx(edges)
-  path = bfs(cur,goal,adj.mtrx)
-
-  stopifnot(length(path) > 0)
+  # Find shortest path to goal
+  path = bfs(cur,goal,generate.adjacency.mtrx(edges))
   
+  # Manual step or not
   manual = FALSE
 
   if (!manual) {
     if (length(path) == 1) {
       #' We are at the goal!
+      #' TODO: something more clever as mv2? For example, path leading to the
+      #' second most probable state?
       mv1 = 0
       mv2 = 0
     } else if (length(path) == 2) {
-      # One step left
+      # One step left to goal
       mv1 = path[2]
       mv2 = 0
     } else {
+      # Take two steps
       mv1 = path[2]
       mv2 = path[3]
     }
   } else {
-    #' Taken from manualWC 
+    #' Stolen from manualWC 
     options=getOptions(positions[3],edges)
     print("Move 1 options (plus 0 for search):")
     print(options)
@@ -131,6 +137,7 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   return(moveInfo)
 }
 
+#' Generates an adjacency matrix from the edges
 generate.adjacency.mtrx <- function(edges) {
   mtrx = matrix(0,nrow=NSTATES,ncol=NSTATES)
 
@@ -146,35 +153,48 @@ generate.adjacency.mtrx <- function(edges) {
   }
 
   return (mtrx)
-  
 }
 
+#' Performs BFS to find the shortest path from 'from' to 'to'
+#' in the graph defined by the adjacency matrix 'adj.mtrx'
 bfs <- function(from,to,adj.mtrx) {
+  # Number of vertices
   n = nrow(adj.mtrx)
 
+  # FIFO queue
   queue = matrix(c(FALSE,Inf), nrow=n, ncol=2, byrow = TRUE)
+  # Visited vertices
   visited = rep(FALSE,n)
+  # Parent of every vertex
   parent = rep(NA,n)
-  
+
+  # Add 'from' to queue and visited
   queue[from,] = c(TRUE,0)
   visited[from] = TRUE
 
+  # Perform search
   while (TRUE %in% queue[,1]) {
     min = min(queue[,2])
-    
+
+    # Extract the elemetn with the minimum depth from the queue
     current = which(queue[,2] == min)[1]
     queue[current,] = c(FALSE,Inf)
 
+    # Add all unvisited adjacent vertices to the queue
     for (adj in which(adj.mtrx[current,] == 1)) {
       if (!visited[adj]) {
         visited[adj] = TRUE
         queue[adj,] = c(TRUE,min+1)
         parent[adj] = current
+
+        if (adj == to) {
+          break
+        }
       }
     }
-    
   }
 
+  # Help function to create a path from the parent array
   reconstruct.path <- function(start,end,p) {
     path = c(end)
     current = end
@@ -188,19 +208,31 @@ bfs <- function(from,to,adj.mtrx) {
   return (reconstruct.path(from,to,parent))
 }
 
+#' Estimate the current state from the previous one, using
+#' the forward algorithm
+#'
+#' @param s.old previous state estimation
+#' @param t.mtrx transition matrix
+#' @param e.mtrxs emission matrices for salinity, phosphate and nitrogen
+#' @param obs observations in this step
 state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs) {
+  # Initialize the state estimation
   s.est = rep(0,NSTATES)
+
+  # Run the forward algorithm
   for (i in 1:NSTATES) {
     sum = 0
     for (j in 1:NSTATES) {
       sum = sum + s.old[j]*t.mtrx[j,i] 
     }
 
-    # Salinity, phosphate and nitrogen
+    #' Emission probabilities for salinity, phosphate and nitrogen
     e.sal = e.mtrxs$salinity[i,n.interval(obs[1],MIN,MAX,DELTA)]
     e.pho = e.mtrxs$phosphate[i,n.interval(obs[2],MIN,MAX,DELTA)]
     e.nit = e.mtrxs$nitrogen[i,n.interval(obs[3],MIN,MAX,DELTA)]
 
+    #' Total emission probabilitiy is the product of the individual
+    #' probabilities (assuming they are independent)
     e = e.sal*e.pho*e.nit
 
     s.est[i] = sum*e
@@ -209,6 +241,8 @@ state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs) {
   return (s.est)
 }
 
+#' Normalizes a vector with numbers so that the sum of the numbers
+#' is one
 normalize <- function(v) {
   tot.sum = sum(v)
   for (i in 1:length(v)) {
@@ -221,37 +255,20 @@ normalize <- function(v) {
 #' that we transition to state j given that we are in state i,
 #' assuming:
 #' - Any move to a neighbor is equally probable
-#' - We cannot transition from i to i
+#' - We can transition from i to i
 #'
 #' @param edges a vector with the edges
 #' @param n.states the number of states
 generate.transition.matrix <- function(edges,n.states) {
-  # Initialise the transistion matrix
-  transition.matrix = matrix(0,nrow=n.states,ncol=n.states)
-
-  # Initialise a count matrix for the number of neighbors for each state
-  count.matrix = matrix(0,nrow=n.states,ncol=1)
-
-  # Count the number of neighbors for each state and mark neighbors
-  for (i in 1:nrow(edges)) {
-    from = edges[i,1]
-    to = edges[i,2]
-
-    #' Increase counters for 'from' and 'to' states
-    count.matrix[from] = count.matrix[from] + 1
-    count.matrix[to] = count.matrix[to] + 1
-    
-    #' Mark 'from' and 'to' as being neighbors
-    transition.matrix[from,to] = 1
-    transition.matrix[to,from] = 1
-    transition.matrix[to,to] = 1
-    transition.matrix[from,from] = 1
-  }
+  # Initialise the transistion matrix as the adjacency matrix
+  transition.matrix = generate.adjacency.mtrx(edges)
 
   # Normalize the '1':s in the transition matrix to real probabilities
   for (i in 1:n.states) {
+    # Number of neighbors of i
+    neighbors = length(which(transition.matrix[i,] == 1))
     for (j in 1:n.states) {
-      transition.matrix[i,j] = transition.matrix[i,j] / count.matrix[i]
+      transition.matrix[i,j] = transition.matrix[i,j] / neighbors
     }
   }
   
@@ -316,7 +333,8 @@ generate.emission.matrix <- function(data,min,max,delta) {
   return (emission.matrix)
 }
 
-#' Returns the interval index of i (see generate.emission.matrix)
+#' Returns the interval index of i, for the intervals used in
+#' generate.emission.matrix
 n.interval <- function(i,min,max,delta) {
   n.intervals = (max - min)/delta + 2
   if (i < min)
@@ -327,6 +345,7 @@ n.interval <- function(i,min,max,delta) {
     return (1 + floor((i-min)/delta))
 }
 
+# A small test function
 test.emission.matrix <- function() {
   data = cbind(runif(NSTATES,100,200),runif(NSTATES,5,30))
   #print(generate.emission.matrix(data,100,200,5))
