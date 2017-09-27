@@ -2,12 +2,12 @@
 NSTATES=40
 
 #' Interval sizes in emission matrices
-MIN=50
-MAX=250
+MIN=100
+MAX=200
 DELTA=1
 
 markovWC=function(moveInfo,readings,positions,edges,probs) {
-
+  
   # Initial run?
   if (length(moveInfo$mem) == 0) {
     #' Generate emission matrices
@@ -51,7 +51,7 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   } else {
     # Estimate state with forward algorithm
     s.est = state.estimate(s.old, t.mtrx,e.mtrxs,readings)
-
+        
     # If hikers are not eaten, Croc is not at their positions
     if (!is.na(positions[1])) {
       s.est[positions[1]] = 0
@@ -63,11 +63,11 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
     # Normalize to real probabilities
     s.est = normalize(s.est)
   }
-
+  
   # Current position
   cur = positions[3]
   # Most probably location for Croc
-  goal = which(s.est == max(s.est),arr.ind = TRUE)
+  goal = which(s.est == max(s.est),arr.ind = TRUE)[1]
   
   print(paste("most probable state:",goal))
 
@@ -85,11 +85,14 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
       mv1 = 0
       mv2 = 0
     } else if (length(path) == 2) {
-      # One step left to goal
+      #' One step left to goal
+      stopifnot(!is.na(path[2]))
       mv1 = path[2]
       mv2 = 0
     } else {
-      # Take two steps
+      #' Take two steps
+      stopifnot(!is.na(path[1]))
+      stopifnot(!is.na(path[2]))
       mv1 = path[2]
       mv2 = path[3]
     }
@@ -347,7 +350,28 @@ n.interval <- function(i,min,max,delta) {
     return (1 + ceiling((i-min)/delta))
 }
 
-# A small test function
+#' Run n times, ouput average, min, max and stddev
+testRun <- function(n, makeMoves=markovWC) {
+  times = c()
+  for (i in 1:n) {
+    t = runWheresCroc(makeMoves=markovWC,plot=F)
+    times = c(times,t)
+    if (i %% 10 == 0) {
+      print(i)
+      printStats(times)
+    }
+  }
+  printStats(times)
+}
+
+printStats <- function(v) {
+  print(paste("mean:",mean(v)))
+  print(paste("min:",min(v)))
+  print(paste("max:",max(v)))
+  print(paste("stddev:",sd(v)))
+}
+
+#' A small test function
 test.emission.matrix <- function() {
   data = cbind(runif(NSTATES,100,200),runif(NSTATES,5,30))
   #print(generate.emission.matrix(data,100,200,5))
@@ -362,3 +386,38 @@ test.emission.matrix <- function() {
     print(sum(e.m[i,]))
   }
 }
+
+#' Results:
+#'
+#' MIN, MAX, DELTA = 50, 250, 5
+#' mean = 4.22
+#' min = 1
+#' max = 10
+#' sd = 2.05
+#'
+#' MIN, MAX, DELTA = 50, 250, 1
+#' mean = 4.2
+#' min = 1
+#' max = 11
+#' sd = 1.98
+#' 
+#' MIN, MAX, DELTA = 100, 200, 1
+#' mean = 3.99
+#' min = 1
+#' max = 7
+#' sd = 1.52
+#' 
+#' MIN, MAX, DELTA = 100, 200, 5
+#' mean = 4.19
+#' min = 1
+#' max = 11
+#' sd = 2.13
+#'
+#' Not using previous state estimation:
+#' mean = 8.87
+#' min = 1
+#' max = 60
+#' sd = 9.27
+ 
+
+
