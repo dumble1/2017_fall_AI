@@ -69,7 +69,7 @@ manualWC=function(moveInfo,readings,positions,edges,probs) {
 #' @param pause The pause period between moves. Ignore this.
 #' @return A string describing the outcome of the game.
 #' @export
-runWheresCroc=function(makeMoves,showCroc=F,pause=1) {
+runWheresCroc=function(makeMoves,showCroc=T,pause=1,plot=T) {
   positions=sample(1:40,4) # Croc, BP1, BP2, Player
   points=getPoints()
   edges=getEdges()
@@ -95,7 +95,10 @@ runWheresCroc=function(makeMoves,showCroc=F,pause=1) {
     if (!is.na(positions[3]) && positions[3]==positions[1]) {
       positions[3]=-positions[3]
     }
-    plotGameboard(points,edges,move,positions,showCroc)
+    
+    if (plot) {
+      plotGameboard(points,edges,move,positions,showCroc)
+    }
     
     Sys.sleep(pause)
     
