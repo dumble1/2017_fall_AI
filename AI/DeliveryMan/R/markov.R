@@ -351,10 +351,10 @@ n.interval <- function(i,min,max,delta) {
 }
 
 #' Run n times, ouput average, min, max and stddev
-testRun <- function(n, makeMoves=markovWC) {
+testRun <- function(n, makeMoves=markovWC, plot=F) {
   times = c()
   for (i in 1:n) {
-    t = runWheresCroc(makeMoves=markovWC,plot=F)
+    t = runWheresCroc(makeMoves=markovWC,plot=plot)
     times = c(times,t)
     if (i %% 10 == 0) {
       print(i)
