@@ -6,6 +6,9 @@ MIN=100
 MAX=200
 DELTA=1
 
+#' pnorm or dnorm
+DISCRETE=F
+
 markovWC=function(moveInfo,readings,positions,edges,probs) {
   
   # Initial run?
@@ -50,7 +53,7 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
     s.est[-positions[2]] = 1
   } else {
     # Estimate state with forward algorithm
-    s.est = state.estimate(s.old, t.mtrx,e.mtrxs,readings)
+    s.est = state.estimate(s.old, t.mtrx,e.mtrxs,readings, probs)
         
     # If hikers are not eaten, Croc is not at their positions
     if (!is.na(positions[1])) {
@@ -220,7 +223,7 @@ bfs <- function(from,to,adj.mtrx) {
 #' @param t.mtrx transition matrix
 #' @param e.mtrxs emission matrices for salinity, phosphate and nitrogen
 #' @param obs observations in this step
-state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs) {
+state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs, probs) {
   # Initialize the state estimation
   s.est = rep(0,NSTATES)
 
@@ -231,10 +234,16 @@ state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs) {
       sum = sum + s.old[j]*t.mtrx[j,i] 
     }
 
-    #' Emission probabilities for salinity, phosphate and nitrogen
-    e.sal = e.mtrxs$salinity[i,n.interval(obs[1],MIN,MAX,DELTA)]
-    e.pho = e.mtrxs$phosphate[i,n.interval(obs[2],MIN,MAX,DELTA)]
-    e.nit = e.mtrxs$nitrogen[i,n.interval(obs[3],MIN,MAX,DELTA)]
+    if (DISCRETE) {
+      #' Emission probabilities for salinity, phosphate and nitrogen
+      e.sal = e.mtrxs$salinity[i,n.interval(obs[1],MIN,MAX,DELTA)]
+      e.pho = e.mtrxs$phosphate[i,n.interval(obs[2],MIN,MAX,DELTA)]
+      e.nit = e.mtrxs$nitrogen[i,n.interval(obs[3],MIN,MAX,DELTA)]
+    } else {
+      e.sal = dnorm(obs[1],probs$salinity[i,1],probs$salinity[i,2])
+      e.pho = dnorm(obs[2],probs$phosphate[i,1],probs$phosphate[i,2])
+      e.nit = dnorm(obs[3],probs$nitrogen[i,1],probs$nitrogen[i,2])
+    }
 
     #' Total emission probabilitiy is the product of the individual
     #' probabilities (assuming they are independent)
@@ -418,6 +427,10 @@ test.emission.matrix <- function() {
 #' min = 1
 #' max = 60
 #' sd = 9.27
- 
+#'
+#' DISCRETE=F
+#' "mean: 4.07"
+#' "min: 1"
+#' "max: 9"
 
 
