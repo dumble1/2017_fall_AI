@@ -86,7 +86,17 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
       #' TODO: something more clever as mv2? For example, path leading to the
       #' second most probable state?
       mv1 = 0
-      mv2 = 0
+
+      ## Find second best state
+      s.copy = s.est
+      s.copy[goal] = -1
+      second.best = which(s.copy == max(s.copy),arr.ind = TRUE)[1]
+      second.path = bfs(cur,second.best,generate.adjacency.mtrx(edges))
+
+      stopifnot(length(second.path) > 1)
+      stopifnot(!is.na(second.path[2]))
+
+      mv2 = second.path[2]
     } else if (length(path) == 2) {
       #' One step left to goal
       stopifnot(!is.na(path[2]))
@@ -94,8 +104,8 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
       mv2 = 0
     } else {
       #' Take two steps
-      stopifnot(!is.na(path[1]))
       stopifnot(!is.na(path[2]))
+      stopifnot(!is.na(path[3]))
       mv1 = path[2]
       mv2 = path[3]
     }
@@ -185,7 +195,7 @@ bfs <- function(from,to,adj.mtrx) {
     min = min(queue[,2])
 
     # Extract the elemetn with the minimum depth from the queue
-    current = which(queue[,2] == min)[1]
+    current = sample(which(queue[,2] == min),1)
     queue[current,] = c(FALSE,Inf)
 
     # Add all unvisited adjacent vertices to the queue
@@ -429,8 +439,15 @@ test.emission.matrix <- function() {
 #' sd = 9.27
 #'
 #' DISCRETE=F
-#' "mean: 4.07"
-#' "min: 1"
-#' "max: 9"
+#' [1] "mean: 4.185"
+#' [1] "min: 1"
+#' [1] "max: 13"
+#' [1] "stddev: 2.08737445901116"
+#'
+#' DISCRETE=T
+#' [1] "mean: 4.395"
+#' [1] "min: 1"
+#' [1] "max: 21"
+#' [1] "stddev: 2.13671255449593"
 
 
