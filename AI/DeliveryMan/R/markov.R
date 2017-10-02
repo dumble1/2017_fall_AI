@@ -13,25 +13,18 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   
   # Initial run?
   if (length(moveInfo$mem) == 0) {
-    #' Generate emission matrices
-    e.mtrx.sal = generate.emission.matrix(probs$salinity,MIN,MAX,DELTA)
-    e.mtrx.pho = generate.emission.matrix(probs$phosphate,MIN,MAX,DELTA)
-    e.mtrx.nit = generate.emission.matrix(probs$nitrogen,MIN,MAX,DELTA)
-
     #' Generate transition matrix
     t.mtrx = generate.transition.matrix(edges,NSTATES)
 
     #' Initialize the memory list
     moveInfo$mem = list(s.old = rep(1/NSTATES,NSTATES),   # Initial state estimation (all states equally probable)
-                        t.mtrx = t.mtrx,                  # Transition matrix
-                        e.mtrxs = list(salinity=e.mtrx.sal,phosphate=e.mtrx.pho,nitrogen=e.mtrx.nit) # Emission matrices
+                        t.mtrx = t.mtrx                   # Transition matrix
                         )
   }
 
   # Extract data
   s.old = moveInfo$mem$s.old
   t.mtrx = moveInfo$mem$t.mtrx
-  e.mtrxs = moveInfo$mem$e.mtrxs
 
   # Had problems with positions not beeing numeric
   for (i in 1:length(positions)) {
@@ -53,7 +46,7 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
     s.est[-positions[2]] = 1
   } else {
     # Estimate state with forward algorithm
-    s.est = state.estimate(s.old, t.mtrx,e.mtrxs,readings, probs)
+    s.est = state.estimate(s.old, t.mtrx, readings, probs)
         
     # If hikers are not eaten, Croc is not at their positions
     if (!is.na(positions[1])) {
@@ -194,8 +187,8 @@ bfs <- function(from,to,adj.mtrx) {
   while (TRUE %in% queue[,1]) {
     min = min(queue[,2])
 
-    # Extract the elemetn with the minimum depth from the queue
-    current = sample(which(queue[,2] == min),1)
+  # Extract the elemetn with the minimum depth from the queue
+    current = which(queue[,2] == min)[1]
     queue[current,] = c(FALSE,Inf)
 
     # Add all unvisited adjacent vertices to the queue
@@ -233,7 +226,7 @@ bfs <- function(from,to,adj.mtrx) {
 #' @param t.mtrx transition matrix
 #' @param e.mtrxs emission matrices for salinity, phosphate and nitrogen
 #' @param obs observations in this step
-state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs, probs) {
+state.estimate <- function(s.old, t.mtrx, obs, probs) {
   # Initialize the state estimation
   s.est = rep(0,NSTATES)
 
@@ -244,16 +237,9 @@ state.estimate <- function(s.old, t.mtrx, e.mtrxs, obs, probs) {
       sum = sum + s.old[j]*t.mtrx[j,i] 
     }
 
-    if (DISCRETE) {
-      #' Emission probabilities for salinity, phosphate and nitrogen
-      e.sal = e.mtrxs$salinity[i,n.interval(obs[1],MIN,MAX,DELTA)]
-      e.pho = e.mtrxs$phosphate[i,n.interval(obs[2],MIN,MAX,DELTA)]
-      e.nit = e.mtrxs$nitrogen[i,n.interval(obs[3],MIN,MAX,DELTA)]
-    } else {
-      e.sal = dnorm(obs[1],probs$salinity[i,1],probs$salinity[i,2])
-      e.pho = dnorm(obs[2],probs$phosphate[i,1],probs$phosphate[i,2])
-      e.nit = dnorm(obs[3],probs$nitrogen[i,1],probs$nitrogen[i,2])
-    }
+    e.sal = dnorm(obs[1],probs$salinity[i,1],probs$salinity[i,2])
+    e.pho = dnorm(obs[2],probs$phosphate[i,1],probs$phosphate[i,2])
+    e.nit = dnorm(obs[3],probs$nitrogen[i,1],probs$nitrogen[i,2])
 
     #' Total emission probabilitiy is the product of the individual
     #' probabilities (assuming they are independent)
@@ -299,76 +285,6 @@ generate.transition.matrix <- function(edges,n.states) {
   return (transition.matrix)
 }
 
-#' Generates an emission matrix E, where E[i,j] is the probability that
-#' we observe a value within interval no. j given state i.
-#' The first interval (j=1) is [-Inf,min], and the last interval is [max,Inf].
-#' The other intervals are [min + delta*(j-2), min + delta*(j-1)].
-#'
-#' Example: min = 0, max = 20, delta = 5, then we have the 6 intervals:
-#' 1: [-Inf, 0]
-#' 2: [0,5]
-#' 3: [5,10]
-#' 4: [10,15]
-#' 5: [15,20]
-#' 6: [20, Inf]
-#'
-#' @param data a matrix with n rows (one row per state) and 2 columns.
-#' The first column is the mean value and the second column is the
-#' standard deviation.
-#' @param min the minimum value
-#' @param max the maximum value
-#' @param delta the length of each interval
-generate.emission.matrix <- function(data,min,max,delta) {
-  # The number of intervals (the "+ 2" is for the cases < min and > max)
-  n.intervals = (max-min)/delta + 2
-  # The number of states
-  n.states = nrow(data)
-  # Initialize the emission matrix
-  emission.matrix = matrix(nrow=n.states,ncol=n.intervals)
-
-  # Special case for first and last intervals
-  for (i in 1:n.states) {
-    #' First "interval": P(x <= min)
-    p.min = pnorm(min,data[i,1],data[i,2])
-    emission.matrix[i,1] = p.min
-
-    #' Last "interval": P(x >= max) = 1 - P(x <= max)
-    p.max = pnorm(max,data[i,1],data[i,2])
-    emission.matrix[i,n.intervals] = 1 - p.max
-  }
-  
-  # Fill in the emission matrix for the middle intervals
-  for (j in 2:(n.intervals-1)) {
-    #' Find start and end of interval
-    start = min + delta*(j-2)
-    end = min + delta*(j-1)
-    
-    stopifnot(start >= min)
-    stopifnot(end <= max)
-
-    for (i in 1:n.states) {
-      #' P(start <= x <= end) = P(x <= end) - P(x <= start)
-      p.start = pnorm(start,data[i,1],data[i,2])
-      p.end = pnorm(end,data[i,1],data[i,2])
-      emission.matrix[i,j] = p.end - p.start
-    }
-  }
-
-  return (emission.matrix)
-}
-
-#' Returns the interval index of i, for the intervals used in
-#' generate.emission.matrix
-n.interval <- function(i,min,max,delta) {
-  n.intervals = (max - min)/delta + 2
-  if (i < min)
-    return (1)
-  else if (i > max)
-    return (n.intervals)
-  else
-    return (1 + ceiling((i-min)/delta))
-}
-
 #' Run n times, ouput average, min, max and stddev
 testRun <- function(n, makeMoves=markovWC, plot=F) {
   times = c()
@@ -388,22 +304,6 @@ printStats <- function(v) {
   print(paste("min:",min(v)))
   print(paste("max:",max(v)))
   print(paste("stddev:",sd(v)))
-}
-
-#' A small test function
-test.emission.matrix <- function() {
-  data = cbind(runif(NSTATES,100,200),runif(NSTATES,5,30))
-  #print(generate.emission.matrix(data,100,200,5))
-
-  data = cbind(runif(10,5,25),runif(10,1,2))
-  print("data")
-  print(data)
-  e.m = generate.emission.matrix(data,-25,25,5)
-  print(e.m)
-  print("This should be filled with 1")
-  for (i in 1:nrow(e.m)) {
-    print(sum(e.m[i,]))
-  }
 }
 
 #' Results:
