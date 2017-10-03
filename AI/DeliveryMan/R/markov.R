@@ -1,30 +1,30 @@
 #' Number of states
 NSTATES=40
 
-#' Interval sizes in emission matrices
-MIN=100
-MAX=200
-DELTA=1
+DELTA=0.5
 
-#' pnorm or dnorm
-DISCRETE=F
+DNORM=F
 
 markovWC=function(moveInfo,readings,positions,edges,probs) {
   
   # Initial run?
   if (length(moveInfo$mem) == 0) {
-    #' Generate transition matrix
-    t.mtrx = generate.transition.matrix(edges,NSTATES)
+    ## Generate adjacency matrix
+    adj.mtrx = generate.adjacency.mtrx(edges)
+    ## Generate transition matrix
+    t.mtrx = generate.transition.matrix(adj.mtrx)
 
-    #' Initialize the memory list
-    moveInfo$mem = list(s.old = rep(1/NSTATES,NSTATES),   # Initial state estimation (all states equally probable)
-                        t.mtrx = t.mtrx                   # Transition matrix
+    ## Initialize the memory list
+    moveInfo$mem = list(s.old = matrix(1/NSTATES,nrow=NSTATES,ncol=1),   # Initial state estimation (all states equally probable)
+                        t.mtrx = t.mtrx,                                 # Transition matrix
+                        adj.mtrx = adj.mtrx                              # Adjacency matrix
                         )
   }
 
   # Extract data
   s.old = moveInfo$mem$s.old
   t.mtrx = moveInfo$mem$t.mtrx
+  adj.mtrx = moveInfo$mem$adj.mtrx
 
   # Had problems with positions not beeing numeric
   for (i in 1:length(positions)) {
@@ -35,12 +35,12 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
 
   # Generate the state estimation
   if (!is.na(positions[1]) && positions[1] < 0) {
-    #' Hiker 1 is eaten
+    ## Hiker 1 is eaten
     print(paste("hiker 1 is eaten!"))
     s.est = rep(0,NSTATES)
     s.est[-positions[1]] = 1
   } else if (!is.na(positions[2]) && positions[2] < 0) {
-    #' Hiker 2 is eaten
+    ## Hiker 2 is eaten
     print(paste("hiker 2 is eaten!"))
     s.est = rep(0,NSTATES)
     s.est[-positions[2]] = 1
@@ -65,65 +65,34 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   # Most probably location for Croc
   goal = which(s.est == max(s.est),arr.ind = TRUE)[1]
   
-  print(paste("most probable state:",goal))
-
   # Find shortest path to goal
-  path = bfs(cur,goal,generate.adjacency.mtrx(edges))
+  path = bfs(cur,goal,adj.mtrx)
   
-  # Manual step or not
-  manual = FALSE
+  if (length(path) == 1) {
+    ## We are at the goal!
+    mv1 = 0
 
-  if (!manual) {
-    if (length(path) == 1) {
-      #' We are at the goal!
-      #' TODO: something more clever as mv2? For example, path leading to the
-      #' second most probable state?
-      mv1 = 0
+    ## Find second best state
+    s.copy = s.est
+    s.copy[goal] = -1
+    second.best = which(s.copy == max(s.copy),arr.ind = TRUE)[1]
+    second.path = bfs(cur,second.best,adj.mtrx)
 
-      ## Find second best state
-      s.copy = s.est
-      s.copy[goal] = -1
-      second.best = which(s.copy == max(s.copy),arr.ind = TRUE)[1]
-      second.path = bfs(cur,second.best,generate.adjacency.mtrx(edges))
+    stopifnot(length(second.path) > 1)
+    stopifnot(!is.na(second.path[2]))
 
-      stopifnot(length(second.path) > 1)
-      stopifnot(!is.na(second.path[2]))
-
-      mv2 = second.path[2]
-    } else if (length(path) == 2) {
-      #' One step left to goal
-      stopifnot(!is.na(path[2]))
-      mv1 = path[2]
-      mv2 = 0
-    } else {
-      #' Take two steps
-      stopifnot(!is.na(path[2]))
-      stopifnot(!is.na(path[3]))
-      mv1 = path[2]
-      mv2 = path[3]
-    }
+    mv2 = second.path[2]
+  } else if (length(path) == 2) {
+    ## One step left to goal
+    stopifnot(!is.na(path[2]))
+    mv1 = path[2]
+    mv2 = 0
   } else {
-    #' Stolen from manualWC 
-    options=getOptions(positions[3],edges)
-    print("Move 1 options (plus 0 for search):")
-    print(options)
-    mv1=readline("Move 1: ")
-    if (mv1=="q") {stop()}
-    if (!mv1 %in% options && mv1 != 0) {
-      warning ("Invalid move. Search ('0') specified.")
-      mv1=0
-    }
-    if (mv1!=0) {
-      options=getOptions(mv1,edges)
-    }
-    print("Move 2 options (plus 0 for search):")
-    print(options)
-    mv2=readline("Move 2: ")    
-    if (mv2=="q") {stop()}
-    if (!mv1 %in% options && mv1 != 0) {
-      warning ("Invalid move. Search ('0') specified.")
-      mv2=0
-    }
+    ## Take two steps
+    stopifnot(!is.na(path[2]))
+    stopifnot(!is.na(path[3]))
+    mv1 = path[2]
+    mv2 = path[3]
   }
   
   mv1 = as.numeric(mv1)
@@ -133,10 +102,10 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   
   # Mark nodes as searched
   if (mv1 == 0) {
-    #' Current state is searched
+    ## Current state is searched
     s.est[positions[3]] = 0
   } else if (mv2 == 0) {
-    #' State mv1 is searched
+    ## State mv1 is searched
     stopifnot(mv1 <= length(s.est))
     stopifnot(mv1 > 0)
     s.est[mv1] = 0 
@@ -148,7 +117,7 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   return(moveInfo)
 }
 
-#' Generates an adjacency matrix from the edges
+## Generates an adjacency matrix from the edges
 generate.adjacency.mtrx <- function(edges) {
   mtrx = matrix(0,nrow=NSTATES,ncol=NSTATES)
 
@@ -156,7 +125,7 @@ generate.adjacency.mtrx <- function(edges) {
     from = edges[i,1]
     to = edges[i,2]
     
-    #' Mark 'from' and 'to' as being neighbors
+    ## Mark 'from' and 'to' as being neighbors
     mtrx[from,to] = 1
     mtrx[to,from] = 1
     mtrx[to,to] = 1
@@ -164,6 +133,31 @@ generate.adjacency.mtrx <- function(edges) {
   }
 
   return (mtrx)
+}
+
+#' Generates a transition matrix T, where T[i,j] is the probability
+#' that we transition to state j given that we are in state i,
+#' assuming any move to a neighbor is equally probable
+#'
+#' @param adj.mtrx adjacency matrix of the graph
+generate.transition.matrix <- function(adj.mtrx) {
+  # Initialise the transistion matrix as the adjacency matrix
+  transition.matrix = adj.mtrx
+
+  stopifnot(nrow(adj.mtrx) == ncol(adj.mtrx))
+
+  n = nrow(adj.mtrx)
+  
+  # Normalize the '1':s in the adjacency matrix to real probabilities
+  for (i in 1:n) {
+    # Number of neighbors of i
+    neighbors = length(which(transition.matrix[i,] == 1))
+    for (j in 1:n) {
+      transition.matrix[i,j] = transition.matrix[i,j] / neighbors
+    }
+  }
+  
+  return (transition.matrix)
 }
 
 #' Performs BFS to find the shortest path from 'from' to 'to'
@@ -227,27 +221,19 @@ bfs <- function(from,to,adj.mtrx) {
 #' @param e.mtrxs emission matrices for salinity, phosphate and nitrogen
 #' @param obs observations in this step
 state.estimate <- function(s.old, t.mtrx, obs, probs) {
-  # Initialize the state estimation
-  s.est = rep(0,NSTATES)
-
-  # Run the forward algorithm
-  for (i in 1:NSTATES) {
-    sum = 0
-    for (j in 1:NSTATES) {
-      sum = sum + s.old[j]*t.mtrx[j,i] 
-    }
-
-    e.sal = dnorm(obs[1],probs$salinity[i,1],probs$salinity[i,2])
-    e.pho = dnorm(obs[2],probs$phosphate[i,1],probs$phosphate[i,2])
-    e.nit = dnorm(obs[3],probs$nitrogen[i,1],probs$nitrogen[i,2])
-
-    #' Total emission probabilitiy is the product of the individual
-    #' probabilities (assuming they are independent)
-    e = e.sal*e.pho*e.nit
-
-    s.est[i] = sum*e
+  prob <- function(x,mu,sigma) {
+    if (DNORM)
+      return (dnorm(x,mu,sigma))
+    else
+      return (pnorm(x+DELTA,mu,sigma) - pnorm(x-DELTA,mu,sigma))
   }
-  
+
+  e.sal = prob(obs[1],probs$salinity[,1],probs$salinity[,2])
+  e.pho = prob(obs[2],probs$phosphate[,1],probs$phosphate[,2])
+  e.nit = prob(obs[3],probs$nitrogen[,1],probs$nitrogen[,2])
+
+  s.est = t(t(s.old) %*% t.mtrx) * e.sal * e.pho * e.nit
+
   return (s.est)
 }
 
@@ -259,30 +245,6 @@ normalize <- function(v) {
     v[i] = v[i] / tot.sum
   }
   return (v)
-}
-
-#' Generates a transition matrix T, where T[i,j] is the probability
-#' that we transition to state j given that we are in state i,
-#' assuming:
-#' - Any move to a neighbor is equally probable
-#' - We can transition from i to i
-#'
-#' @param edges a vector with the edges
-#' @param n.states the number of states
-generate.transition.matrix <- function(edges,n.states) {
-  # Initialise the transistion matrix as the adjacency matrix
-  transition.matrix = generate.adjacency.mtrx(edges)
-
-  # Normalize the '1':s in the transition matrix to real probabilities
-  for (i in 1:n.states) {
-    # Number of neighbors of i
-    neighbors = length(which(transition.matrix[i,] == 1))
-    for (j in 1:n.states) {
-      transition.matrix[i,j] = transition.matrix[i,j] / neighbors
-    }
-  }
-  
-  return (transition.matrix)
 }
 
 #' Run n times, ouput average, min, max and stddev
