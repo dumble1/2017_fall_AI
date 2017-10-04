@@ -103,7 +103,7 @@ runWheresCroc=function(makeMoves,showCroc=T,pause=1,plot=T) {
     Sys.sleep(pause)
     
     readings=getReadings(positions[1],probs)
-    moveInfo=makeMoves(moveInfo,readings,positions[2:4],edges,probs)
+    moveInfo=makeMoves(moveInfo,readings,positions[1:4],edges,probs)	###for test, I change the positions.
     if (length(moveInfo$moves)!=2) {
       stop("Error! Passed makeMoves function should return a vector of two elements.")
     }
