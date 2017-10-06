@@ -1,10 +1,6 @@
 #' Number of states
 NSTATES=40
 
-DELTA=0.5
-
-DNORM=F
-
 markovWC=function(moveInfo,readings,positions,edges,probs) {
   
   # Initial run?
@@ -26,29 +22,23 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   t.mtrx = moveInfo$mem$t.mtrx
   adj.mtrx = moveInfo$mem$adj.mtrx
 
-  # Had problems with positions not beeing numeric
-  for (i in 1:length(positions)) {
-    if (!is.na(positions[i])) {
-      positions[i] = as.numeric(positions[i])
-    }
-  }
+  # Positions must be numeric type
+  positions = as.numeric(positions)
 
   # Generate the state estimation
   if (!is.na(positions[1]) && positions[1] < 0) {
     ## Hiker 1 is eaten
-    print(paste("hiker 1 is eaten!"))
     s.est = rep(0,NSTATES)
     s.est[-positions[1]] = 1
   } else if (!is.na(positions[2]) && positions[2] < 0) {
     ## Hiker 2 is eaten
-    print(paste("hiker 2 is eaten!"))
     s.est = rep(0,NSTATES)
     s.est[-positions[2]] = 1
   } else {
     # Estimate state with forward algorithm
     s.est = state.estimate(s.old, t.mtrx, readings, probs)
         
-    # If hikers are not eaten, Croc is not at their positions
+    # If hikers are alive, then Croc is not at their positions
     if (!is.na(positions[1])) {
       s.est[positions[1]] = 0
     } 
@@ -62,7 +52,7 @@ markovWC=function(moveInfo,readings,positions,edges,probs) {
   
   # Current position
   cur = positions[3]
-  # Most probably location for Croc
+  # Most probable location for Croc
   goal = which(s.est == max(s.est),arr.ind = TRUE)[1]
   
   # Find shortest path to goal
@@ -222,10 +212,7 @@ bfs <- function(from,to,adj.mtrx) {
 #' @param obs observations in this step
 state.estimate <- function(s.old, t.mtrx, obs, probs) {
   prob <- function(x,mu,sigma) {
-    if (DNORM)
-      return (dnorm(x,mu,sigma))
-    else
-      return (pnorm(x+DELTA,mu,sigma) - pnorm(x-DELTA,mu,sigma))
+    return (dnorm(x,mu,sigma))
   }
 
   e.sal = prob(obs[1],probs$salinity[,1],probs$salinity[,2])
@@ -267,49 +254,4 @@ printStats <- function(v) {
   print(paste("max:",max(v)))
   print(paste("stddev:",sd(v)))
 }
-
-#' Results:
-#'
-#' MIN, MAX, DELTA = 50, 250, 5
-#' mean = 4.22
-#' min = 1
-#' max = 10
-#' sd = 2.05
-#'
-#' MIN, MAX, DELTA = 50, 250, 1
-#' mean = 4.2
-#' min = 1
-#' max = 11
-#' sd = 1.98
-#' 
-#' MIN, MAX, DELTA = 100, 200, 1
-#' mean = 3.99
-#' min = 1
-#' max = 7
-#' sd = 1.52
-#' 
-#' MIN, MAX, DELTA = 100, 200, 5
-#' mean = 4.19
-#' min = 1
-#' max = 11
-#' sd = 2.13
-#'
-#' Not using previous state estimation:
-#' mean = 8.87
-#' min = 1
-#' max = 60
-#' sd = 9.27
-#'
-#' DISCRETE=F
-#' [1] "mean: 4.185"
-#' [1] "min: 1"
-#' [1] "max: 13"
-#' [1] "stddev: 2.08737445901116"
-#'
-#' DISCRETE=T
-#' [1] "mean: 4.395"
-#' [1] "min: 1"
-#' [1] "max: 21"
-#' [1] "stddev: 2.13671255449593"
-
 
